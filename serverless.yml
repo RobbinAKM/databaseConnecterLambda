@@ -1,25 +1,92 @@
-# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
 app: db-connector-lambda
-# "service" is the name of this project. This will also be added to your AWS resource names.
 service: databaseConnecterLambda
 
 plugins:
   - serverless-python-requirements
   - serverless-offline
   - serverless-dotenv-plugin
+  - serverless-dynamodb-local
 
 custom:
   pythonRequirements:
-    dockerizePip: non-linux
+    dockerizePip: true
+    zip: true
+    slim: true
+  dynamodb:
+    stages:
+      - dev
+    start:
+      port: 8000
+      inMemory: true
+      migrate: true
+  serverless-offline:
+    httpPort: 3000 # Run API locally on port 3000
 
 provider:
   name: aws
   runtime: python3.11
+  region: us-east-1
+  timeout: 100
+  memorySize: 512
+  logRetentionInDays: 7
+  architecture: arm64 # Use ARM for cost savings
+  environment:
+    DYNAMODB_TABLE: SchemaTable
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1 # Optimize connection pooling
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:PutItem"
+        - "dynamodb:GetItem"
+        - "dynamodb:Scan"
+        - "dynamodb:Query"
+        - "dynamodb:UpdateItem"
+        - "dynamodb:DeleteItem"
+      Resource:
+        Fn::GetAtt:
+          - SchemaTable
+          - Arn
+  lambdaHashingVersion: 20201221 # Ensures stable function deployment
+
+resources:
+  Resources:
+    SchemaTable:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
+        AttributeDefinitions:
+          - AttributeName: "id"
+            AttributeType: "S"
+        KeySchema:
+          - AttributeName: "id"
+            KeyType: "HASH"
+        BillingMode: PAY_PER_REQUEST
+        TimeToLiveSpecification:
+          AttributeName: "ttl"
+          Enabled: true # Enable automatic data expiration
+        StreamSpecification:
+          StreamViewType: NEW_IMAGE # Enable DynamoDB Streams (for event-driven arch)
 
 functions:
-  hello:
+  extractSchema:
     handler: handler.lambda_handler
+    timeout: 30
+    memorySize: 256 # Adjusted based on expected workload
+    reservedConcurrency: 5 # Prevent excessive scaling
     events:
       - httpApi:
-          path: /
-          method: post
+          path: /schema
+          method: get
+          cors:
+            allowedOrigins:
+              - "*"
+            allowedHeaders:
+              - Content-Type
+              - Authorization
+            allowedMethods:
+              - OPTIONS
+              - GET
+              - POST
+              - PUT
+              - DELETE
+            maxAge: 86400 # Cache preflight response for 24h
