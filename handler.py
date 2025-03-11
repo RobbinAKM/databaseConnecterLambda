@@ -31,14 +31,13 @@ def lambda_handler(event, context):
 
         if is_db_connected:
             db_schema = get_database_schema(engine)
-            schema_id=store_schema_in_dynamodb(db_schema)  
+            db_info=store_schema_in_dynamodb(db_schema)  
         else:
             db_schema = None
 
         response_body = {
             "isDbConnected": is_db_connected,
-            "schemaId":schema_id,
-            "dbSchema": db_schema,
+            "dbInfo":db_info
         }
 
         return {"statusCode": 200, "body": json.dumps(response_body)}

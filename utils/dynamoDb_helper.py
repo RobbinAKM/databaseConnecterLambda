@@ -49,13 +49,13 @@ def create_table_if_not_exists(dynamodb, table_name: str):
             TableName=table_name,
             KeySchema=[
                 {
-                    'AttributeName': 'databaseInfo',
+                    'AttributeName': 'schemaId',
                     'KeyType': 'HASH'  
                 },
             ],
             AttributeDefinitions=[
                 {
-                    'AttributeName': 'databaseInfo',
+                    'AttributeName': 'schemaId',
                     'AttributeType': 'S'
                 },
             ],

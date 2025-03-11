@@ -9,9 +9,7 @@ plugins:
 
 custom:
   pythonRequirements:
-    dockerizePip: true
-    zip: true
-    slim: true
+    dockerizePip: non-linux
   dynamodb:
     stages:
       - dev
@@ -42,6 +40,7 @@ provider:
         - "dynamodb:Query"
         - "dynamodb:UpdateItem"
         - "dynamodb:DeleteItem"
+        - "dynamodb:DescribeTable"
       Resource:
         Fn::GetAtt:
           - SchemaTable
@@ -55,10 +54,10 @@ resources:
       Properties:
         TableName: ${self:provider.environment.DYNAMODB_TABLE}
         AttributeDefinitions:
-          - AttributeName: "id"
+          - AttributeName: "schemaId"
             AttributeType: "S"
         KeySchema:
-          - AttributeName: "id"
+          - AttributeName: "schemaId"
             KeyType: "HASH"
         BillingMode: PAY_PER_REQUEST
         TimeToLiveSpecification:
@@ -70,7 +69,7 @@ resources:
 functions:
   extractSchema:
     handler: handler.lambda_handler
-    timeout: 30
+    timeout: 60
     memorySize: 256 # Adjusted based on expected workload
     reservedConcurrency: 5 # Prevent excessive scaling
     events:
